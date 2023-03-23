@@ -3,7 +3,11 @@ classification baseline (either machine ids or different work conditions) by yuf
 
 # How to run
 modify task in runNtimes.py, choosing to classify machines or conditions
+
 modify nTimes to decide how many runs for averaging
+
+modify max_step to control how many steps to train
+
 
 Then run "python runNtimes.py"
 

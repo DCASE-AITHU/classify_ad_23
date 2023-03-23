@@ -11,6 +11,6 @@ task = 'condition' # or 'machine'
 tempfile = f'temp-{curT}-{task}.csv'
 outResultFile = f'Rs-{expname}-mt{mt}-{curT}-{task}.csv'
 for _ in range(nTimes):
-    os.system(f'CUDA_VISIBLE_DEVICES=4 python {expname}.py -mt {mt} --result_file {tempfile} --max_step 400 --task {task}')
+    os.system(f'CUDA_VISIBLE_DEVICES=4 python {expname}.py -mt {mt} --result_file {tempfile} --max_step 50000 --task {task}')
 statResults(tempfile, outResultFile)
 os.remove(tempfile)

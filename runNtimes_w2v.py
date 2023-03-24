@@ -4,7 +4,7 @@ from util import statResults
 
 
 nTimes = 5
-expname = 'experiment23_stepdl'
+expname = 'experiment23_stepdl_w2v' 
 mt = -1
 curT = time.time()
 task = 'condition' # or 'machine'

@@ -17,6 +17,7 @@ Rs-{expname}-mt{mt}-{curT}-{task}.csv in format "machine, s_auc_mean, s_auc_std,
 # Bug
 There are a lot of same audios tagged with "anomaly" and "normal" in development test dataset, which leads to wrong conclusions now.
 |Machine| Repeat|
+| ----------- | ----------- |
 |ToyCar| 0|
 |ToyTrain|0|
 |bearing|26|

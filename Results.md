@@ -1,4 +1,11 @@
 # Overview
+【腾讯文档】DCASE23
+https://docs.qq.com/sheet/DZmhZeU5pYmZkUlhP?tab=BB08J2
+
+
+-------------------------------------------------
+Deprecated due to data errors
+# Overview (Deprecated)
 | ToyCar      | AUC_source(Ave.) | AUC_source(Std.) | AUC_target(Ave.) | AUC_target(Std.) | pAUC(Ave.) | pAUC(Std.) |
 | ----------- | ----------- | ----------- | ----------- | ----------- | ----------- | ----------- |
 | Baseline MSE      | 70.10%       | 0.46%| 46.89 % | 2.67 %| 52.47 %| 1.28 %|

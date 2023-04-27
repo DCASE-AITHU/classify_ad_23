@@ -1,3 +1,5 @@
+cache
+task1_extract_embedding.py
 aa*
 temp*
 Rs*csv
@@ -5,3 +7,4 @@ log*
 cache/
 __pycache__/
 results*
+datasets/__pycache__/

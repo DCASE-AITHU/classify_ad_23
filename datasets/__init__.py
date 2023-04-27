@@ -48,6 +48,13 @@ CLASS_MAP23 = {
     'ToyCar': 4,
     'ToyTrain': 5,
     'valve': 6,
+    'bandsaw': 7,
+    'grinder': 8,
+    'shaker': 9,
+    'ToyDrone': 10,
+    'ToyNscale': 11,
+    'ToyTank': 12,
+    'Vacuum': 13
 }
 INVERSE_CLASS_MAP23 = {
     0: 'bearing',
@@ -57,6 +64,13 @@ INVERSE_CLASS_MAP23 = {
     4: 'ToyCar',
     5: 'ToyTrain',
     6: 'valve',
+    7: 'bandsaw',
+    8: 'grinder',
+    9: 'shaker',
+    10: 'ToyDrone',
+    11: 'ToyNscale',
+    12: 'ToyTank',
+    13: 'Vacuum'
 }
 DEV_TYPES23 = [
     'bearing',
@@ -67,5 +81,13 @@ DEV_TYPES23 = [
     'ToyTrain',
     'valve',
 ]
-EVAL_TYPES23 = []
+EVAL_TYPES23 = [
+    'bandsaw',
+    'grinder',
+    'shaker',
+    'ToyDrone',
+    'ToyNscale',
+    'ToyTank',
+    'Vacuum'
+]
 ALL_TYPES23 = DEV_TYPES23 + EVAL_TYPES23

@@ -40,6 +40,8 @@ def train_and_test(
     rmaxall = defaultdict(dict)
     result_curves_all = defaultdict(dict)
     loss_when_best_all = defaultdict(dict)
+    hmean_max = 0.0
+
     learning_curves = []
     opt = torch.optim.Adam(
         params=filter(lambda p: p.requires_grad, net.parameters()),
@@ -48,15 +50,16 @@ def train_and_test(
     lr_sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, 'min', patience=5)
     traindl = stepDataloader(trainds, args.batch_size, total_step=args.max_step)
     pbar = tqdm(traindl, total=args.max_step)
-    obInterval = 200
+    obInterval = 500
     try:
         for curstep, medata in pbar:
             x = medata['observations'].cuda()
             label = medata['classify_labs'].unsqueeze(1).cuda()
             loss = net(x, label)
-            opt.zero_grad()
             loss.backward()
-            opt.step()
+            if curstep % args.accumulate_grad== 0:
+                opt.step()
+                opt.zero_grad()
             learning_curves.append(loss.item())
             pbar.set_description(
                 'step: {}/{} loss: {}'.format(
@@ -76,6 +79,7 @@ def train_and_test(
                     ensemble_mode,
                     asd_mode
                 )
+                method_hmeans = defaultdict(list)
                 for mt in rnps.keys():
                     rmax = rmaxall[mt]
                     result_curves = result_curves_all[mt]
@@ -88,12 +92,21 @@ def train_and_test(
                             rmax[tup] = {'metric': np.zeros(3), 'buffer': None}
                             result_curves[tup] = []
                         temp = hmean(rnp[:, i])
+                        method_hmeans[tup].append(temp)
                         result_curves[tup].append(temp)
                         if hmean(rmax[tup]['metric']) < temp:
                             rmax[tup]['metric'] = rnp[:, i]
                             loss_when_best[tup] = avg_loss
-                            saveModels(net, tup, args)
+                            #saveModels(net, tup, args)
                             rmax[tup]['buffer'] = scores_buf[i]
+                for method in method_hmeans:
+                    temp = hmean(method_hmeans[method])
+                    if temp > hmean_max:
+                        hmean_max = temp
+                        filepath = os.path.join(args.save_path, "saved_models")
+                        os.makedirs(filepath, exist_ok=True)
+                        model_name = "step_{}_method_{}_{}_hmean_{:0.3f}".format(curstep, method[0], method[1], hmean_max)
+                        torch.save(net.state_dict(), os.path.join(filepath, model_name))
                 net.train()
         draw_curve(learning_curves, os.path.join(
             args.save_path,
@@ -244,6 +257,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-mt', '--machine_type', type=int, default=-1)
     parser.add_argument('-bs', '--batch_size', type=int, default=32)
+    parser.add_argument('-dur', '--input_duration', type=float, default=1)
+    parser.add_argument('-ac', '--accumulate_grad', type=int, default=8)
+    parser.add_argument('-ep', '--exp_path', type=str, default="exp")
     parser.add_argument(
         '-lr', '--learning_rate',
         type=float, default=1e-3,
@@ -253,7 +269,7 @@ if __name__ == '__main__':
     parser.add_argument('--result_file', type=str)
     parser.add_argument('--task', type=str, default='machine') # or 'condition'
     args = parser.parse_args()
-    expkw = 'classify_w2v'
+    expkw = args.exp_path #'classify'
     machine_type = args.machine_type
     result_file = args.result_file
     if machine_type == -1:
@@ -271,9 +287,10 @@ if __name__ == '__main__':
     )
     # 准备数据部分
     sr = 16000
-    input_samples = 16000
+    input_samples = int(16000 * args.input_duration)
     hop_size = None
     mcm = MCMDataSet1d23(
+        data_root="/bigdata/home/lvzhiqiang/data/dcase23/updated/",
         machine_types=machine_type,
         input_samples=input_samples,
         hop_size=hop_size,
@@ -290,8 +307,6 @@ if __name__ == '__main__':
     net = W2V(embedding_dim=emb_size, output_dim = n_classes)
     net.cuda()
 
-    # netinfo = torchinfo.summary(net, input_size=(input_samples,), batch_dim=0, depth=2)
-    # logging.info('network summary:\n'+str(netinfo))
     args.netname = net.__class__.__name__
     args.save_path = f"results23{expkw}_{args.task}"
     os.makedirs(args.save_path, exist_ok=True)

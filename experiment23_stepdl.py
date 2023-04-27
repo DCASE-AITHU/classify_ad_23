@@ -243,6 +243,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-mt', '--machine_type', type=int, default=-1)
     parser.add_argument('-bs', '--batch_size', type=int, default=150)
+    parser.add_argument('-ep', '--exp_path', type=str, default=exp)
     parser.add_argument(
         '-lr', '--learning_rate',
         type=float, default=1e-3,
@@ -252,7 +253,7 @@ if __name__ == '__main__':
     parser.add_argument('--result_file', type=str)
     parser.add_argument('--task', type=str, default='machine') # or 'condition'
     args = parser.parse_args()
-    expkw = 'classify'
+    expkw = args.exp_path #'classify'
     machine_type = args.machine_type
     result_file = args.result_file
     if machine_type == -1:

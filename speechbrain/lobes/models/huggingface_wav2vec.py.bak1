@@ -16,18 +16,18 @@ from torch import nn
 
 # We check if transformers is installed.
 try:
-    from transformers import Wav2Vec2Model, HubertModel, UniSpeechSatModel, WavLMModel, WhisperModel
-    from transformers import Wav2Vec2Config, HubertConfig, UniSpeechSatConfig, WavLMConfig, WhisperConfig
+    from transformers import Wav2Vec2Model, HubertModel
+    from transformers import Wav2Vec2Config, HubertConfig
     from transformers import Wav2Vec2FeatureExtractor
-    from transformers import AutoModelForAudioClassification
 except ImportError:
     print(
         "Please install transformer from HuggingFace to use wav2vec2/Hubert !"
     )
 
+HF_models = {"wav2vec2": Wav2Vec2Model, "hubert": HubertModel}
 
-HF_models = {"wav2vec2": Wav2Vec2Model, "hubert": HubertModel, "unispeech": UniSpeechSatModel, "wavlm": WavLMModel, "whisper": WhisperModel}
-HF_config = {"wav2vec2": Wav2Vec2Config, "hubert": HubertConfig, "unispeech": UniSpeechSatConfig, "wavlm": WavLMConfig, "whisper": WhisperConfig}
+HF_config = {"wav2vec2": Wav2Vec2Config, "hubert": HubertConfig}
+
 
 class HuggingFaceWav2Vec2(nn.Module):
     """This lobe enables the integration of HuggingFace
@@ -84,7 +84,6 @@ class HuggingFaceWav2Vec2(nn.Module):
         pretrain=True,
         apply_spec_augment=False,
         hidden_concate=False,
-        weighted_sum=True,
     ):
         super().__init__()
 
@@ -98,29 +97,18 @@ class HuggingFaceWav2Vec2(nn.Module):
         if "hubert" in source:
             config = HF_config.get("hubert")
             model = HF_models.get("hubert")
-        elif "wav2vec" in source:
+        else:
             config = HF_config.get("wav2vec2")
             model = HF_models.get("wav2vec2")
-        elif "unispeech" in source:
-            config = HF_config.get("unispeech")
-            model = HF_models.get("unispeech")
-        elif "wavlm" in source:
-            config = HF_config.get("wavlm")
-            model = HF_models.get("wavlm")
-        elif "whisper" in source:
-            config = HF_config.get("whisper")
-            model = HF_models.get("whisper")
+
         # Download the model from HuggingFace.
         # if pretrain is False, we do not download the pretrained weights
         # it it is True, we download and load them.
-#        if not (pretrain):
-#            config = config.from_pretrained(source, cache_dir=save_path)
-#            config = config.from_pretrained(source, cache_dir=save_path)
-#            self.model = model(config)
-#        else:
-#            self.model = model.from_pretrained(source, cache_dir=save_path)
-        # self.model = model.from_pretrained(source, cache_dir=save_path)
-        self.model = model.from_pretrained(source)
+        if not (pretrain):
+            config = config.from_pretrained(source, cache_dir=save_path)
+            self.model = model(config)
+        else:
+            self.model = model.from_pretrained(source, cache_dir=save_path)
 
         # set apply_spec_augment
         self.model.config.apply_spec_augment = apply_spec_augment
@@ -139,11 +127,8 @@ class HuggingFaceWav2Vec2(nn.Module):
                 self.model.feature_extractor._freeze_parameters()
         self.hidden_concate = hidden_concate
         self.output_size = self.model.config.hidden_size
-        self.weighted_sum = weighted_sum
-        if self.weighted_sum:
-            self.feature_weight = nn.Parameter(torch.zeros(1+self.model.config.num_hidden_layers))
-        #if self.hidden_concate:
-        #    self.output_size = self.output_size * (1+self.model.config.num_hidden_layers)
+        if self.hidden_concate:
+            self.output_size = self.output_size * (1+self.model.config.num_hidden_layers)
 
     def forward(self, wav):
         """Takes an input waveform and return its corresponding wav2vec encoding.
@@ -174,19 +159,13 @@ class HuggingFaceWav2Vec2(nn.Module):
             wav = F.layer_norm(wav, wav.shape)
 
         # Extract wav2vec output
-        if self.weighted_sum:
+        if self.hidden_concate:
             output = self.model(wav, output_hidden_states=True)
-            bs, length, dim = output['hidden_states'][0].shape
+            print(output['hidden_states'][0].shape, output['hidden_states'][-1].shape, len(output['hidden_states']), self.output_size)
             out = torch.cat(output['hidden_states'], dim=-1)
-            out = out.reshape(bs, length, dim, -1)
-            out = torch.transpose(out, 0, 3)
-            norm_weights = F.softmax(self.feature_weight, dim=-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-            out = norm_weights * out
-            out = torch.sum(out, 0)
-            out = out.permute(2, 0, 1)
         else:
             out = self.model(wav)[0]
-        
+
         # We normalize the output if required
         if self.output_norm:
             out = F.layer_norm(out, out.shape)

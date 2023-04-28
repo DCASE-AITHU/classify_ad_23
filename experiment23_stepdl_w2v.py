@@ -260,6 +260,8 @@ if __name__ == '__main__':
     parser.add_argument('-dur', '--input_duration', type=float, default=1)
     parser.add_argument('-ac', '--accumulate_grad', type=int, default=8)
     parser.add_argument('-ep', '--exp_path', type=str, default="exp")
+    parser.add_argument('-sp', '--speed_perturb', type=bool, default=False)
+    parser.add_argument('-model', '--model_name', type=str, default="wav2vec_300m")
     parser.add_argument(
         '-lr', '--learning_rate',
         type=float, default=1e-3,
@@ -287,14 +289,15 @@ if __name__ == '__main__':
     )
     # 准备数据部分
     sr = 16000
-    input_samples = int(16000 * args.input_duration)
+    input_samples = int(sr * args.input_duration)
     hop_size = None
     mcm = MCMDataSet1d23(
         data_root="/bigdata/home/lvzhiqiang/data/dcase23/updated/",
         machine_types=machine_type,
         input_samples=input_samples,
         hop_size=hop_size,
-        task=args.task
+        task=args.task,
+        sp=args.speed_perturb
     )
     trainds = mcm.training_data_set()
     emb_trainds = mcm.embedding_data_set()
@@ -304,7 +307,7 @@ if __name__ == '__main__':
     n_classes = mcm.n_classes
     emb_size = 128
 
-    net = W2V(embedding_dim=emb_size, output_dim = n_classes)
+    net = W2V(embedding_dim=emb_size, output_dim = n_classes, model_name=args.model_name)
     net.cuda()
 
     args.netname = net.__class__.__name__

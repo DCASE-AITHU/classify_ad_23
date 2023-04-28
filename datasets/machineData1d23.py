@@ -22,7 +22,8 @@ class MCMDataSet1d23():
             input_samples=16384,
             hop_size=None,
             data_root='/home/public/dcase/dcase23',
-            task='machine' # or 'condition'
+            task='machine', # or 'condition'
+            sp=False
     ):
         assert input_samples is not None, "input_samples should not None."
         if machine_types == -1:
@@ -45,7 +46,8 @@ class MCMDataSet1d23():
                     input_samples=input_samples,
                     hop_size=None,
                     data_root=data_root,
-                    task=self.task
+                    task=self.task,
+                    sp=sp
                 )
             )
             if self.task == 'machine':
@@ -61,7 +63,8 @@ class MCMDataSet1d23():
                         input_samples=input_samples,
                         hop_size=self.hop_size,
                         data_root=data_root,
-                        task = 'machine' # no need change task here
+                        task = 'machine', # no need change task here
+                        sp=sp
                     )
                 )
                 embedding_sets.append(
@@ -71,7 +74,8 @@ class MCMDataSet1d23():
                         input_samples=input_samples,
                         hop_size=self.hop_size,
                         data_root=data_root,
-                        task='machine' # no need change task here
+                        task='machine', # no need change task here
+                        sp=sp
                     )
                 )
         training_set = torch.utils.data.ConcatDataset(training_sets)
@@ -102,7 +106,8 @@ class MachineDataSet(torch.utils.data.Dataset):
             input_samples=256,
             hop_size=None,
             task='machine',
-            data_root='/home/public/dcase/dcase23'
+            data_root='/home/public/dcase/dcase23',
+            sp=False
     ):
 
         assert mode in ['training', 'validation']
@@ -117,9 +122,15 @@ class MachineDataSet(torch.utils.data.Dataset):
         self.input_samples = input_samples
         self.hop_size = hop_size
         if self.machine_type in DEV_TYPES23:
-            root_folder = 'dev_data'
+            if sp:
+                root_folder = 'dev_data_sp'
+            else:
+                root_folder = 'dev_data'
         elif self.machine_type in EVAL_TYPES23:
-            root_folder = 'eval_data'
+            if sp:
+                root_folder = 'eval_data_sp'
+            else:
+                root_folder = 'eval_data'
         else:
             raise AttributeError
 
@@ -202,7 +213,7 @@ class MachineDataSet(torch.utils.data.Dataset):
         machine_section = int(meta_data[1])
         domain = meta_data[2]
         if self.task == 'condition':
-            section_var = "_".join(meta_data[6:])
+            section_var = self.machine_type + "_" + "_".join(meta_data[6:])
             if not section_var in self.classify_labs_dict:
                 self.classify_labs_dict[section_var] = self.classify_labs
                 self.classify_labs += 1

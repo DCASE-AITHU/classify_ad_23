@@ -39,6 +39,7 @@ def train_and_test(
     rmaxall = defaultdict(dict)
     result_curves_all = defaultdict(dict)
     loss_when_best_all = defaultdict(dict)
+    hmean_max = 0.0
     learning_curves = []
     opt = torch.optim.Adam(
         params=filter(lambda p: p.requires_grad, net.parameters()),
@@ -47,15 +48,16 @@ def train_and_test(
     lr_sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, 'min', patience=5)
     traindl = stepDataloader(trainds, args.batch_size, total_step=args.max_step)
     pbar = tqdm(traindl, total=args.max_step)
-    obInterval = 200
+    obInterval = 500
     try:
         for curstep, medata in pbar:
             x = medata['observations'].cuda()
             label = medata['classify_labs'].cuda()
             loss = net(x, label)
-            opt.zero_grad()
             loss.backward()
-            opt.step()
+            if curstep % args.accumulate_grad== 0:
+                opt.step()
+                opt.zero_grad()
             learning_curves.append(loss.item())
             pbar.set_description(
                 'step: {}/{} loss: {}'.format(
@@ -75,6 +77,7 @@ def train_and_test(
                     ensemble_mode,
                     asd_mode
                 )
+                method_hmeans = defaultdict(list)
                 for mt in rnps.keys():
                     rmax = rmaxall[mt]
                     result_curves = result_curves_all[mt]
@@ -87,12 +90,21 @@ def train_and_test(
                             rmax[tup] = {'metric': np.zeros(3), 'buffer': None}
                             result_curves[tup] = []
                         temp = hmean(rnp[:, i])
+                        method_hmeans[tup].append(temp)
                         result_curves[tup].append(temp)
                         if hmean(rmax[tup]['metric']) < temp:
                             rmax[tup]['metric'] = rnp[:, i]
                             loss_when_best[tup] = avg_loss
-                            saveModels(net, tup, args)
+                            #saveModels(net, tup, args)
                             rmax[tup]['buffer'] = scores_buf[i]
+                for method in method_hmeans:
+                    temp = hmean(method_hmeans[method])
+                    if temp > hmean_max:
+                        hmean_max = temp
+                        filepath = os.path.join(args.save_path, "saved_models")
+                        os.makedirs(filepath, exist_ok=True)
+                        model_name = "step_{}_method_{}_{}_hmean_{:0.3f}".format(curstep, method[0], method[1], hmean_max)
+                        torch.save(net.state_dict(), os.path.join(filepath, model_name))
                 net.train()
         draw_curve(learning_curves, os.path.join(
             args.save_path,
@@ -242,8 +254,11 @@ def adall(net, trainds, testds, bs, ensemble_mode: list, asd_mode: list):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-mt', '--machine_type', type=int, default=-1)
-    parser.add_argument('-bs', '--batch_size', type=int, default=150)
-    parser.add_argument('-ep', '--exp_path', type=str, default=exp)
+    parser.add_argument('-bs', '--batch_size', type=int, default=32)
+    parser.add_argument('-dur', '--input_duration', type=float, default=1)
+    parser.add_argument('-ac', '--accumulate_grad', type=int, default=8)
+    parser.add_argument('-ep', '--exp_path', type=str, default="exp")
+    parser.add_argument('-sp', '--speed_perturb', type=bool, default=False)
     parser.add_argument(
         '-lr', '--learning_rate',
         type=float, default=1e-3,
@@ -274,14 +289,15 @@ if __name__ == '__main__':
     n_fft = 1024
     hop_length = n_fft // 2
     n_mels = 128
-    n_frames = 186
-    input_samples = n_fft + (n_frames - 1) * hop_length
+    input_samples = int(sr * args.input_duration)
     hop_size = None
     mcm = MCMDataSet1d23(
+        data_root="/bigdata/home/lvzhiqiang/data/dcase23/updated/",
         machine_types=machine_type,
         input_samples=input_samples,
         hop_size=hop_size,
-        task=args.task
+        task=args.task,
+        sp=args.speed_perturb
     )
     trainds = mcm.training_data_set()
     emb_trainds = mcm.embedding_data_set()

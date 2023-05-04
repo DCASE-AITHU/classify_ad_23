@@ -17,7 +17,7 @@ max_step=40000
 dur=2.0
 batch_size=32
 accumulate_grad_step=8
-lr=0.001
+lr=0.0001
 for i in range(nTimes):
     os.system(f'CUDA_VISIBLE_DEVICES={device} python experiment23_stepdl_w2v.py \
                 -model {model} -mt {mt} --result_file {tempfile} \

@@ -72,6 +72,15 @@ INVERSE_CLASS_MAP23 = {
     12: 'ToyTank',
     13: 'Vacuum'
 }
+INVERSE_CLASS_MAP23_EVAL = {
+    0: 'bearing',
+    1: 'fan',
+    2: 'gearbox',
+    3: 'slider',
+    4: 'ToyCar',
+    5: 'ToyTrain',
+    6: 'valve',
+}
 DEV_TYPES23 = [
     'bearing',
     'fan',

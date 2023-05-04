@@ -95,7 +95,7 @@ def train_and_test(
                         if hmean(rmax[tup]['metric']) < temp:
                             rmax[tup]['metric'] = rnp[:, i]
                             loss_when_best[tup] = avg_loss
-                            #saveModels(net, tup, args)
+                            saveModels(net, tup, args, mt)
                             rmax[tup]['buffer'] = scores_buf[i]
                 for method in method_hmeans:
                     temp = hmean(method_hmeans[method])
@@ -258,7 +258,7 @@ if __name__ == '__main__':
     parser.add_argument('-dur', '--input_duration', type=float, default=1)
     parser.add_argument('-ac', '--accumulate_grad', type=int, default=8)
     parser.add_argument('-ep', '--exp_path', type=str, default="exp")
-    parser.add_argument('-sp', '--speed_perturb', type=bool, default=False)
+    parser.add_argument('-sp', '--speed_perturb', type=int, default=0)
     parser.add_argument(
         '-lr', '--learning_rate',
         type=float, default=1e-3,
@@ -273,6 +273,8 @@ if __name__ == '__main__':
     result_file = args.result_file
     if machine_type == -1:
         args.machine_type = 'allmachines'
+    elif machine_type == -2:
+        args.machine_type = 'devmachines'
     else:
         args.machine_type = INVERSE_CLASS_MAP[machine_type]
     logfile = f'logs/{expkw}_log_{args.machine_type}_*.log'
@@ -297,12 +299,11 @@ if __name__ == '__main__':
         input_samples=input_samples,
         hop_size=hop_size,
         task=args.task,
-        sp=args.speed_perturb
+        sp=bool(args.speed_perturb)
     )
     trainds = mcm.training_data_set()
     emb_trainds = mcm.embedding_data_set()
     testds = mcm.validation_data_set()
-
     # 准备网络部分，网络中包含损失函数，训练时网络返回loss，测试时网络返回embedding
     n_classes = mcm.n_classes
     emb_size = 128

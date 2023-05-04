@@ -8,6 +8,7 @@ from typing import List, Optional
 from . import (
     CLASS_MAP23,
     INVERSE_CLASS_MAP23,
+    INVERSE_CLASS_MAP23_EVAL,
     DEV_TYPES23,
     EVAL_TYPES23,
 )
@@ -28,6 +29,8 @@ class MCMDataSet1d23():
         assert input_samples is not None, "input_samples should not None."
         if machine_types == -1:
             machine_types = list(INVERSE_CLASS_MAP.keys())
+        if machine_types == -2:
+            machine_types = list(INVERSE_CLASS_MAP23_EVAL.keys())
         if type(machine_types) is not list:
             machine_types = [machine_types]
         self.data_root = data_root
@@ -133,7 +136,6 @@ class MachineDataSet(torch.utils.data.Dataset):
                 root_folder = 'eval_data'
         else:
             raise AttributeError
-
         if mode == 'training':
             files = glob.glob(
                 os.path.join(

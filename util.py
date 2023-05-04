@@ -64,6 +64,8 @@ def ensemble_embs(embs, mode):
         r = np.mean(embs, axis=0)
     elif mode == 'std':
         r = np.std(embs, axis=0)
+    elif mode == 'mean_std':
+        r = np.concatenate([np.mean(embs, axis=0), np.std(embs, axis=0)])
     elif mode == 'max':
         r = np.max(embs, axis=0)
     elif mode == 'min':
@@ -140,11 +142,11 @@ def file_emb_new(
     return outdic
 
 
-def saveModels(net, method: tuple, args, br=None):
+def saveModels(net, method: tuple, args, mt, br=None):
     filepath = os.path.join(args.save_path, "saved_models")
     os.makedirs(filepath, exist_ok=True)
     temp = os.listdir(filepath)
-    filename = f'{args.machine_type}_{method[0]}_{method[1]}'
+    filename = f'{args.machine_type}_{method[0]}_{method[1]}_{mt}'
     saveflag = True
     if br is not None:
         for it in temp:

@@ -58,29 +58,31 @@ class MCMDataSet1d23():
             else:
                 classify_labs += training_sets[-1].__get_classify_labs_cnt__()
 
-            if INVERSE_CLASS_MAP[machine_type] in DEV_TYPES23:
-                validation_sets.append(
-                    MachineDataSet(
-                        machine_type, -1, # for validation there is no need to keep correct section var labels
-                        mode='validation',
-                        input_samples=input_samples,
-                        hop_size=self.hop_size,
-                        data_root=data_root,
-                        task = 'machine', # no need change task here
-                        sp=sp
-                    )
+        for machine_name in DEV_TYPES23:
+            machine_type = CLASS_MAP23[machine_name]
+        #if INVERSE_CLASS_MAP[machine_type] in DEV_TYPES23:
+            validation_sets.append(
+                MachineDataSet(
+                    machine_type, -1, # for validation there is no need to keep correct section var labels
+                    mode='validation',
+                    input_samples=input_samples,
+                    hop_size=self.hop_size,
+                    data_root=data_root,
+                    task = 'machine', # no need change task here
+                    sp=sp
                 )
-                embedding_sets.append(
-                    MachineDataSet(
-                        machine_type, -1,
-                        mode='training',
-                        input_samples=input_samples,
-                        hop_size=self.hop_size,
-                        data_root=data_root,
-                        task='machine', # no need change task here
-                        sp=sp
-                    )
+            )
+            embedding_sets.append(
+                MachineDataSet(
+                    machine_type, -1,
+                    mode='training',
+                    input_samples=input_samples,
+                    hop_size=self.hop_size,
+                    data_root=data_root,
+                    task='machine', # no need change task here
+                    sp=sp
                 )
+            )
         training_set = torch.utils.data.ConcatDataset(training_sets)
         embedding_set = torch.utils.data.ConcatDataset(embedding_sets)
         validation_set = torch.utils.data.ConcatDataset(validation_sets)

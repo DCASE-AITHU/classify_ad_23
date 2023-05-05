@@ -275,6 +275,8 @@ if __name__ == '__main__':
         args.machine_type = 'allmachines'
     elif machine_type == -2:
         args.machine_type = 'devmachines'
+    elif machine_type == -3:
+        args.machine_type = 'evalmachines'
     else:
         args.machine_type = INVERSE_CLASS_MAP[machine_type]
     logfile = f'logs/{expkw}_log_{args.machine_type}_*.log'

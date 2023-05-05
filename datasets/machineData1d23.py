@@ -8,6 +8,7 @@ from typing import List, Optional
 from . import (
     CLASS_MAP23,
     INVERSE_CLASS_MAP23,
+    INVERSE_CLASS_MAP23_DEV,
     INVERSE_CLASS_MAP23_EVAL,
     DEV_TYPES23,
     EVAL_TYPES23,
@@ -30,6 +31,8 @@ class MCMDataSet1d23():
         if machine_types == -1:
             machine_types = list(INVERSE_CLASS_MAP.keys())
         if machine_types == -2:
+            machine_types = list(INVERSE_CLASS_MAP23_DEV.keys())
+        if machine_types == -3:
             machine_types = list(INVERSE_CLASS_MAP23_EVAL.keys())
         if type(machine_types) is not list:
             machine_types = [machine_types]

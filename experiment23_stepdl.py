@@ -48,7 +48,7 @@ def train_and_test(
     lr_sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, 'min', patience=5)
     traindl = stepDataloader(trainds, args.batch_size, total_step=args.max_step)
     pbar = tqdm(traindl, total=args.max_step)
-    obInterval = 500
+    obInterval = args.obInterval #500
     try:
         for curstep, medata in pbar:
             x = medata['observations'].cuda()
@@ -259,6 +259,7 @@ if __name__ == '__main__':
     parser.add_argument('-ac', '--accumulate_grad', type=int, default=8)
     parser.add_argument('-ep', '--exp_path', type=str, default="exp")
     parser.add_argument('-sp', '--speed_perturb', type=int, default=0)
+    parser.add_argument('-interval', '--obInterval', type=int, default=500)
     parser.add_argument(
         '-lr', '--learning_rate',
         type=float, default=1e-3,
@@ -275,6 +276,8 @@ if __name__ == '__main__':
         args.machine_type = 'allmachines'
     elif machine_type == -2:
         args.machine_type = 'devmachines'
+    elif machine_type == -3:
+        args.machine_type = 'evalmachines'
     else:
         args.machine_type = INVERSE_CLASS_MAP[machine_type]
     logfile = f'logs/{expkw}_log_{args.machine_type}_*.log'
@@ -294,7 +297,7 @@ if __name__ == '__main__':
     input_samples = int(sr * args.input_duration)
     hop_size = None
     mcm = MCMDataSet1d23(
-        data_root="/bigdata/home/lvzhiqiang/data/dcase23/updated/",
+        data_root="/home/public/dcase/dcase23/updated/",
         machine_types=machine_type,
         input_samples=input_samples,
         hop_size=hop_size,

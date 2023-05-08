@@ -75,7 +75,7 @@ def train_and_test(
                 rnps, methods_names, scores_bufs = adall(
                     net, emb_trainds,
                     testds,
-                    args.batch_size,
+                    args.batch_size * 4, ## bigger batch_size for embedding
                     ensemble_mode,
                     asd_mode
                 )
@@ -97,7 +97,7 @@ def train_and_test(
                         if hmean(rmax[tup]['metric']) < temp:
                             rmax[tup]['metric'] = rnp[:, i]
                             loss_when_best[tup] = avg_loss
-                            saveModels(net, tup, args, mt)
+                            #saveModels(net, tup, args, mt)
                             rmax[tup]['buffer'] = scores_buf[i]
                 for method in method_hmeans:
                     temp = hmean(method_hmeans[method])

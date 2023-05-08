@@ -11,8 +11,7 @@ from datasets.machineData1d23 import (
 import torchaudio
 import glob
 
-from mobilenetv2 import MobileNetV2
-from arcface import ArcFace
+from w2v import W2V
 import os
 
 def list_all(data_root, machines):
@@ -32,6 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('-duration', '--input_duration', type=float, required=True)
     parser.add_argument('-shift', '--input_shift', type=float, required=True)
     parser.add_argument('-prefix', '--output_prefix', type=str, required=True)
+    parser.add_argument('-model', '--model_name', type=str, default="wav2vec_300m")
 
     args = parser.parse_args()
     
@@ -39,10 +39,6 @@ if __name__ == '__main__':
 
     # 准备数据部分
     sr = 16000
-    n_fft = 1024
-    hop_length = n_fft // 2
-    n_mels = 128
-    hop_size = None
     input_samples = int(16000 * args.input_duration)
     input_shift = int(16000 * args.input_shift)
 
@@ -55,13 +51,8 @@ if __name__ == '__main__':
         n_classes = 167
 
     emb_size = 128
-    featmodule = torchaudio.transforms.MelSpectrogram(sample_rate=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels, center=False)
-    lossfn = ArcFace(emb_size, n_classes)
-    net = MobileNetV2(
-        emb_size=emb_size,
-        featmodule=featmodule,
-        lossfn=lossfn,
-    )
+
+    net = W2V(embedding_dim=emb_size, output_dim = n_classes, model_name=args.model_name)
     ckpt = args.checkpoint
     net.load_state_dict(torch.load(ckpt))
     net.cuda()

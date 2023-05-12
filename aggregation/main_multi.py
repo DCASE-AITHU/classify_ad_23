@@ -15,6 +15,8 @@ from aggregation.util import ensemble_embs
 from sklearn.metrics import roc_auc_score
 from scipy.stats import hmean
 
+import os
+
 def asd_score(model, scp, machine, backends):
     all_vectors_test = []
     all_vectors_train = []
@@ -59,11 +61,13 @@ def asd_score(model, scp, machine, backends):
     model.train()
     return results
 
-def asd_score_models(models, scp, machine, backends):
+def asd_score_models(models, scp, machine, backends, output_path, test_mode=False):
+    os.system('mkdir -p {}'.format(output_path))
     all_vectors_test = []
     all_vectors_train = []
     test_domains = []
     test_labels = []
+    test_keys = []
 
     with ReadHelper("scp:"+scp) as reader:
         for key, numpy_array in reader:
@@ -88,8 +92,9 @@ def asd_score_models(models, scp, machine, backends):
                     test_domains.append(0) # source normal
                     test_labels.append(0)
                 else:
-                    test_domains.append(1) # targget normal
+                    test_domains.append(1) # target normal
                     test_labels.append(0)
+                test_keys.append(key)
     test_domains = np.array(test_domains)
     test_labels = np.array(test_labels)
     source_index = np.logical_or(test_domains ==-1, test_domains == 0)
@@ -99,6 +104,13 @@ def asd_score_models(models, scp, machine, backends):
     for backend in backends:
         test_scores = select_asd(backend, np.stack(all_vectors_test, axis=0),
                                         np.stack(all_vectors_train, axis=0))
+        # write output anomaly scores
+        assert(len(test_labels) == len(test_keys) and len(test_keys) == len(test_scores))
+        with open(output_path + "/anomaly_score_" + machine + "_section_00_test.csv", "w") as fout:
+            for i, key in enumerate(test_keys):
+                fout.write("{},{}\n".format(key.split("-")[-1]+".wav", test_scores[i]))
+        if test_mode:
+            continue
         s_auc = roc_auc_score(test_labels[source_index], test_scores[source_index])
         t_auc = roc_auc_score(test_labels[target_index], test_scores[target_index])
         p_auc = roc_auc_score(test_labels, test_scores)
@@ -150,11 +162,12 @@ if __name__ == "__main__":
     import sys
     margin=0.2
     scale=30
-    if len(sys.argv) != 2:
-        print("Usage:{} ark_scp run_times".format(sys.argv[0]))
+    if len(sys.argv) != 4:
+        print("Usage:{} ark_scp run_times result_path".format(sys.argv[0]))
         exit(0)
-    scp_file=sys.argv[1]
-    multi_cnt=int(sys.argv[2])
+    scp_file = sys.argv[1]
+    multi_cnt = int(sys.argv[2])
+    result_path = sys.argv[3]
     dataset = Dataset(scp_file, seq_len=3)
     dataloader = DataLoader(dataset, batch_size = 2048, shuffle=True)
     input_shapes=[]
@@ -164,20 +177,23 @@ if __name__ == "__main__":
     print(input_shapes)
     print(dataset.__class_cnt__())
 
-    #backends = ['lof', 'maha', 'knn', 'cos']
     backends = ['knn']
 
     n_epochs = 1
     models=[]
     machines_from_scp = {}
     dev_machines = ['bearing', 'fan', 'gearbox', 'slider', 'ToyCar', 'ToyTrain', 'valve']
+    test_machines = ['bandsaw', 'grinder', 'shaker', 'ToyDrone', 'ToyNscale', 'ToyTank', 'Vacuum']
     with open(scp_file, "r") as fin:
         for line in fin.readlines():
             machines_from_scp[ line.split("-")[0] ] = 1
     machines = []
+    machines_test = []
     for machine in machines_from_scp.keys():
         if machine in dev_machines:
             machines.append(machine)
+        if machine in test_machines:
+            machines_test.append(machine)
     print(machines)
     for try_id in range(multi_cnt):
         model = Model(embedding_dim=input_shapes[-1], output_dim = dataset.__class_cnt__())
@@ -217,10 +233,13 @@ if __name__ == "__main__":
 
     all_hmeans = []
     for machine in machines:
-        results = asd_score_models(models, scp_file, machine, backends)
+        results = asd_score_models(models, scp_file, machine, backends, result_path)
         all_hmeans.append(results)
     for i in range(len(backends)):
         final_hmean = []
         for j in range(len(machines)):
+            print("{} {} Hmean: {:0.3f}".format(machines[j], backends[i], all_hmeans[j][i]))
             final_hmean.append(all_hmeans[j][i])
         print("all_hmean_models {} {:.4f}".format(backends[i], hmean(final_hmean)))      
+    for machine in machines_test:
+        results = asd_score_models(models, scp_file, machine, backends, result_path, test_mode=True)

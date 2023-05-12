@@ -21,4 +21,5 @@ CUDA_VISIBLE_DEVICES=$device python extract_embedding_w2v.py --dataset $dataset 
 ## second step: tranformer-based-pooling
 scp=$output_path/$prefix.scp
 n_times=3 # 3 individual runs and append output embedding
-CUDA_VISIBLE_DEVICES=$device python aggregation/main_multi.py  $scp  ${n_times}
+result_path=csv_path
+CUDA_VISIBLE_DEVICES=$device python aggregation/main_multi.py  $scp  ${n_times} $result_path

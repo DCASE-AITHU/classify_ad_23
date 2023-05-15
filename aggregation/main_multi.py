@@ -16,6 +16,46 @@ from sklearn.metrics import roc_auc_score
 from scipy.stats import hmean
 
 import os
+def asd_origin(scp, machine, backends):
+    all_vectors_test = []
+    all_vectors_train = []
+    test_domains = []
+    test_labels = []
+    with ReadHelper("scp:"+scp) as reader:
+        for key, numpy_array in reader:
+            if machine not in key: # process one machine at one time
+                continue
+            if 'train' in key:
+                all_vectors_train.append(numpy_array.mean(axis=0))
+            else:
+                with torch.no_grad():
+                    all_vectors_test.append(numpy_array.mean(axis=0))
+                if 'anomaly' in key:
+                    test_domains.append(-1) # anomaly
+                    test_labels.append(1)
+                elif 'source' in key:
+                    test_domains.append(0) # source normal
+                    test_labels.append(0)
+                else:
+                    test_domains.append(1) # targget normal
+                    test_labels.append(0)
+
+    test_domains = np.array(test_domains)
+    test_labels = np.array(test_labels)
+    source_index = np.logical_or(test_domains ==-1, test_domains == 0)
+    target_index = np.logical_or(test_domains ==-1, test_domains == 1)
+
+    results = []
+    for backend in backends:
+        test_scores = select_asd(backend, np.stack(all_vectors_test, axis=0),
+                                        np.stack(all_vectors_train, axis=0))
+        s_auc = roc_auc_score(test_labels[source_index], test_scores[source_index])
+        t_auc = roc_auc_score(test_labels[target_index], test_scores[target_index])
+        p_auc = roc_auc_score(test_labels, test_scores, max_fpr=0.1)
+        hmean_auc = hmean([s_auc, t_auc, p_auc])
+        results.append(hmean_auc)
+        #print("{} {:.3f} {:.3f} {:.3f} {:.3f}".format(backend, s_auc, t_auc, p_auc, hmean_auc))
+    return results
 
 def asd_score(model, scp, machine, backends):
     all_vectors_test = []
@@ -54,7 +94,7 @@ def asd_score(model, scp, machine, backends):
                                         np.stack(all_vectors_train, axis=0))
         s_auc = roc_auc_score(test_labels[source_index], test_scores[source_index])
         t_auc = roc_auc_score(test_labels[target_index], test_scores[target_index])
-        p_auc = roc_auc_score(test_labels, test_scores)
+        p_auc = roc_auc_score(test_labels, test_scores, max_fpr=0.1)
         hmean_auc = hmean([s_auc, t_auc, p_auc])
         results.append(hmean_auc)
         #print("{} {:.3f} {:.3f} {:.3f} {:.3f}".format(backend, s_auc, t_auc, p_auc, hmean_auc))
@@ -113,7 +153,7 @@ def asd_score_models(models, scp, machine, backends, output_path, test_mode=Fals
             continue
         s_auc = roc_auc_score(test_labels[source_index], test_scores[source_index])
         t_auc = roc_auc_score(test_labels[target_index], test_scores[target_index])
-        p_auc = roc_auc_score(test_labels, test_scores)
+        p_auc = roc_auc_score(test_labels, test_scores, max_fpr=0.1)
         hmean_auc = hmean([s_auc, t_auc, p_auc])
         results.append(hmean_auc)
         #print("{} {:.3f} {:.3f} {:.3f} {:.3f}".format(backend, s_auc, t_auc, p_auc, hmean_auc))
@@ -231,15 +271,21 @@ if __name__ == "__main__":
         model.eval()
         models.append(model)
 
+    all_hmeans_ori = []
     all_hmeans = []
     for machine in machines:
+        results_ori = asd_origin(scp_file, machine, backends)
+        all_hmeans_ori.append(results_ori)
         results = asd_score_models(models, scp_file, machine, backends, result_path)
         all_hmeans.append(results)
     for i in range(len(backends)):
+        final_hmean_ori = []
         final_hmean = []
         for j in range(len(machines)):
-            print("{} {} Hmean: {:0.3f}".format(machines[j], backends[i], all_hmeans[j][i]))
+            print("{} {} ori Hmean: {:0.3f} final Hmean: {:0.3f}".format(machines[j], backends[i], all_hmeans_ori[j][i], all_hmeans[j][i]))
+            final_hmean_ori.append(all_hmeans_ori[j][i])
             final_hmean.append(all_hmeans[j][i])
-        print("all_hmean_models {} {:.4f}".format(backends[i], hmean(final_hmean)))      
+        print("all_hmean_models {} ori Hmean: {:.4f} Final Hmean: {:.4f}".format(backends[i], hmean(final_hmean_ori), hmean(final_hmean)))   
+        #print("all_hmean_models Final Hmean:{} {:.4f}".format(backends[i], hmean(final_hmean)))         
     for machine in machines_test:
         results = asd_score_models(models, scp_file, machine, backends, result_path, test_mode=True)

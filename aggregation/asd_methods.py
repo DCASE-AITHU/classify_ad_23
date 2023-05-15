@@ -56,7 +56,7 @@ def suod(embs_test, embs_train):
 def knn_score(embs_test, embs_train):
     clf = NearestNeighbors(
         n_neighbors=10,
-        #metric='cosine'
+        # metric='cosine'
     )
     clf.fit(embs_train)
     scores = clf.kneighbors(embs_test, 1)[0].reshape(-1)
@@ -182,7 +182,7 @@ def prob_score(embs_test, sfw, sec: int):
     # logits = F.linear(embs_test, sfw)
     probs = F.softmax(logits, dim=1)
     prob = probs[:, sec]
-    scores = torch.log((1-prob)/(prob+1e-9)+1e-15).cpu().numpy()
+    scores = torch.log((1 - prob) / (prob + 1e-9) + 1e-15).cpu().numpy()
     return scores
 
 

@@ -40,7 +40,7 @@ def calc_embs(net, ds, bs):
 
 
 @torch.no_grad()
-def calc_embs_new(net, ds, bs, specialKey):
+def calc_embs_new(net, ds, bs, specialKey):  # specialKey: 'observations'
     out = {k: list() for k in ds[0].keys()}
     testdl = DataLoader(ds, bs, shuffle=False)
     net.eval()

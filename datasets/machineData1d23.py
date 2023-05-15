@@ -1,4 +1,6 @@
 import os
+import numpy as np
+import pandas as pd
 import torch.utils.data
 import glob
 import soundfile as sf
@@ -10,6 +12,7 @@ from . import (
     INVERSE_CLASS_MAP23,
     INVERSE_CLASS_MAP23_DEV,
     INVERSE_CLASS_MAP23_EVAL,
+    ALL_TYPES23,
     DEV_TYPES23,
     EVAL_TYPES23,
 )
@@ -24,7 +27,7 @@ class MCMDataSet1d23():
             input_samples=16384,
             hop_size=None,
             data_root='/home/public/dcase/dcase23',
-            task='machine', # or 'condition'
+            task='machine',  # or 'condition'
             sp=False
     ):
         assert input_samples is not None, "input_samples should not None."
@@ -61,17 +64,17 @@ class MCMDataSet1d23():
             else:
                 classify_labs += training_sets[-1].__get_classify_labs_cnt__()
 
-        for machine_name in DEV_TYPES23:
+        for machine_name in ALL_TYPES23:
             machine_type = CLASS_MAP23[machine_name]
-        #if INVERSE_CLASS_MAP[machine_type] in DEV_TYPES23:
+        # if INVERSE_CLASS_MAP[machine_type] in DEV_TYPES23:
             validation_sets.append(
                 MachineDataSet(
-                    machine_type, -1, # for validation there is no need to keep correct section var labels
+                    machine_type, -1,  # for validation there is no need to keep correct section var labels
                     mode='validation',
                     input_samples=input_samples,
                     hop_size=self.hop_size,
                     data_root=data_root,
-                    task = 'machine', # no need change task here
+                    task='machine',  # no need change task here
                     sp=sp
                 )
             )
@@ -82,11 +85,11 @@ class MCMDataSet1d23():
                     input_samples=input_samples,
                     hop_size=self.hop_size,
                     data_root=data_root,
-                    task='machine', # no need change task here
+                    task='machine',  # no need change task here
                     sp=sp
                 )
             )
-        training_set = torch.utils.data.ConcatDataset(training_sets)
+        training_set = torch.utils.data.ConcatDataset(training_sets)  # 拼接完后仍按原来顺序
         embedding_set = torch.utils.data.ConcatDataset(embedding_sets)
         validation_set = torch.utils.data.ConcatDataset(validation_sets)
         self.training_set = training_set
@@ -126,6 +129,7 @@ class MachineDataSet(torch.utils.data.Dataset):
             self.classify_labs_cnt = 0
             self.classify_labs_dict = {}
         self.machine_type = INVERSE_CLASS_MAP[machine_type]
+        self.eval_test = (self.machine_type in EVAL_TYPES23) and (mode == 'validation')
         self.mode = mode
         self.input_samples = input_samples
         self.hop_size = hop_size
@@ -201,6 +205,9 @@ class MachineDataSet(torch.utils.data.Dataset):
 
     def __load_meta_data__(self, files):
         data = []
+        if self.mode == 'validation':
+            self.dom_pred_df = pd.read_csv('dom_pred/mfn_pred_mtdom.csv')
+            self.dom_pred_df = self.dom_pred_df[self.dom_pred_df['mt'] == self.machine_type]
         for f in files:
             md = self.__get_meta_data__(f)
             data.append(md)
@@ -218,21 +225,43 @@ class MachineDataSet(torch.utils.data.Dataset):
         machine_type = CLASS_MAP[str.rsplit(file_path, '/', 3)[1]]
         assert self.machine_type == INVERSE_CLASS_MAP[machine_type]
         machine_section = int(meta_data[1])
+
+        file_name = os.path.basename(file_path)
+        if self.mode == 'validation':
+            dom_pred = self.dom_pred_df[self.dom_pred_df['name'] == file_name].to_numpy()[0, -2:]
+            dom_pred = np.array([v for v in dom_pred])
+        else:
+            dom_pred = np.array([-1, -1])
+
+        if self.eval_test:
+            return {
+                'targets': -1,
+                'machine_types': machine_type,
+                'machine_sections': machine_section,
+                'domains': -1,
+                'classify_labs': -1,
+                'file_ids': os.sep.join(
+                    os.path.normpath(file_path).split(os.sep)[-4:]),
+                'dom_pred': dom_pred
+            }
+
         domain = meta_data[2]
         if self.task == 'condition':
             section_var = self.machine_type + "_" + "_".join(meta_data[6:])
-            if not section_var in self.classify_labs_dict:
+            if not (section_var in self.classify_labs_dict):
                 self.classify_labs_dict[section_var] = self.classify_labs
                 self.classify_labs += 1
                 self.classify_labs_cnt += 1
-        
-        if 'normal' in meta_data:
+
+        if self.eval_test:
+            pass
+        elif 'normal' in meta_data:
             y = 0
         elif 'anomaly' in meta_data:
             y = 1
         else:
             raise AttributeError
-        
+
         if self.task == 'machine':
             return {
                 'targets': y,
@@ -241,8 +270,8 @@ class MachineDataSet(torch.utils.data.Dataset):
                 'domains': domain,
                 'classify_labs': self.classify_labs,
                 'file_ids': os.sep.join(
-                    os.path.normpath(file_path).split(os.sep)[-4:]
-                )
+                    os.path.normpath(file_path).split(os.sep)[-4:]),
+                'dom_pred': dom_pred
             }
         else:
             return {
@@ -250,8 +279,8 @@ class MachineDataSet(torch.utils.data.Dataset):
                 'machine_types': machine_type,
                 'machine_sections': machine_section,
                 'domains': domain,
-                'classify_labs': self.classify_labs_dict[ section_var ],
+                'classify_labs': self.classify_labs_dict[section_var],
                 'file_ids': os.sep.join(
-                    os.path.normpath(file_path).split(os.sep)[-4:]
-                )
+                    os.path.normpath(file_path).split(os.sep)[-4:]),
+                'dom_pred': dom_pred
             }

@@ -48,14 +48,14 @@ def train_and_test(
     lr_sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, 'min', patience=5)
     traindl = stepDataloader(trainds, args.batch_size, total_step=args.max_step)
     pbar = tqdm(traindl, total=args.max_step)
-    obInterval = args.obInterval #500
+    obInterval = args.obInterval  # 500
     try:
         for curstep, medata in pbar:
             x = medata['observations'].cuda()
             label = medata['classify_labs'].cuda()
             loss = net(x, label)
             loss.backward()
-            if curstep % args.accumulate_grad== 0:
+            if curstep % args.accumulate_grad == 0:
                 opt.step()
                 opt.zero_grad()
             learning_curves.append(loss.item())

@@ -29,6 +29,7 @@ except ImportError:
 HF_models = {"wav2vec2": Wav2Vec2Model, "hubert": HubertModel, "unispeech": UniSpeechSatModel, "wavlm": WavLMModel, "whisper": WhisperModel}
 HF_config = {"wav2vec2": Wav2Vec2Config, "hubert": HubertConfig, "unispeech": UniSpeechSatConfig, "wavlm": WavLMConfig, "whisper": WhisperConfig}
 
+
 class HuggingFaceWav2Vec2(nn.Module):
     """This lobe enables the integration of HuggingFace
     pretrained wav2vec2.0/Hubert models.
@@ -79,12 +80,12 @@ class HuggingFaceWav2Vec2(nn.Module):
         source,
         save_path,
         output_norm=True,
-        freeze=True,
-        freeze_feature_extractor=False,
+        freeze=True,  # 是否固定整个模型参数
+        freeze_feature_extractor=False,  # 是否固定特征提取器的参数
         pretrain=True,
         apply_spec_augment=False,
         hidden_concate=False,
-        weighted_sum=True,
+        weighted_sum=True,  # 是否使用weighted_sum
     ):
         super().__init__()
 
@@ -113,14 +114,14 @@ class HuggingFaceWav2Vec2(nn.Module):
         # Download the model from HuggingFace.
         # if pretrain is False, we do not download the pretrained weights
         # it it is True, we download and load them.
-#        if not (pretrain):
-#            config = config.from_pretrained(source, cache_dir=save_path)
-#            config = config.from_pretrained(source, cache_dir=save_path)
-#            self.model = model(config)
-#        else:
-#            self.model = model.from_pretrained(source, cache_dir=save_path)
+        if not (pretrain):
+            config = config.from_pretrained(source, cache_dir=save_path)
+            config = config.from_pretrained(source, cache_dir=save_path)
+            self.model = model(config)
+        else:
+            self.model = model.from_pretrained(source, cache_dir=save_path)
         # self.model = model.from_pretrained(source, cache_dir=save_path)
-        self.model = model.from_pretrained(source)
+        # self.model = model.from_pretrained(source)
 
         # set apply_spec_augment
         self.model.config.apply_spec_augment = apply_spec_augment
@@ -141,8 +142,9 @@ class HuggingFaceWav2Vec2(nn.Module):
         self.output_size = self.model.config.hidden_size
         self.weighted_sum = weighted_sum
         if self.weighted_sum:
-            self.feature_weight = nn.Parameter(torch.zeros(1+self.model.config.num_hidden_layers))
-        #if self.hidden_concate:
+            # 不同层输出乘上可学习的参数，叠加
+            self.feature_weight = nn.Parameter(torch.zeros(1 + self.model.config.num_hidden_layers))
+        # if self.hidden_concate:
         #    self.output_size = self.output_size * (1+self.model.config.num_hidden_layers)
 
     def forward(self, wav):
@@ -181,12 +183,12 @@ class HuggingFaceWav2Vec2(nn.Module):
             out = out.reshape(bs, length, dim, -1)
             out = torch.transpose(out, 0, 3)
             norm_weights = F.softmax(self.feature_weight, dim=-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-            out = norm_weights * out
+            out = norm_weights * out  # 不同层的输出加权，每个样本乘的系数相同
             out = torch.sum(out, 0)
             out = out.permute(2, 0, 1)
         else:
             out = self.model(wav)[0]
-        
+
         # We normalize the output if required
         if self.output_norm:
             out = F.layer_norm(out, out.shape)

@@ -157,7 +157,7 @@ def prob_score(embs_test, sfw, sec: int):
     # logits = F.linear(embs_test, sfw)
     probs = F.softmax(logits, dim=1)
     prob = probs[:, sec]
-    scores = torch.log((1-prob)/(prob+1e-9)+1e-15).cpu().numpy()
+    scores = torch.log((1 - prob) / (prob + 1e-9) + 1e-15).cpu().numpy()
     return scores
 
 

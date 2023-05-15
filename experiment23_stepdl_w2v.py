@@ -30,6 +30,7 @@ from collections import defaultdict
 
 from w2v import W2V
 
+
 def train_and_test(
     net, trainds,
     emb_trainds,
@@ -50,14 +51,14 @@ def train_and_test(
     lr_sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, 'min', patience=5)
     traindl = stepDataloader(trainds, args.batch_size, total_step=args.max_step)
     pbar = tqdm(traindl, total=args.max_step)
-    obInterval = args.obInterval #500
+    obInterval = args.obInterval  # 500
     try:
         for curstep, medata in pbar:
             x = medata['observations'].cuda()
             label = medata['classify_labs'].unsqueeze(1).cuda()
             loss = net(x, label)
             loss.backward()
-            if curstep % args.accumulate_grad== 0:
+            if curstep % args.accumulate_grad == 0:
                 opt.step()
                 opt.zero_grad()
             learning_curves.append(loss.item())
@@ -75,7 +76,7 @@ def train_and_test(
                 rnps, methods_names, scores_bufs = adall(
                     net, emb_trainds,
                     testds,
-                    args.batch_size * 4, ## bigger batch_size for embedding
+                    args.batch_size * 4,  # bigger batch_size for embedding
                     ensemble_mode,
                     asd_mode
                 )
@@ -97,7 +98,7 @@ def train_and_test(
                         if hmean(rmax[tup]['metric']) < temp:
                             rmax[tup]['metric'] = rnp[:, i]
                             loss_when_best[tup] = avg_loss
-                            #saveModels(net, tup, args, mt)
+                            # saveModels(net, tup, args, mt)
                             rmax[tup]['buffer'] = scores_buf[i]
                 for method in method_hmeans:
                     temp = hmean(method_hmeans[method])
@@ -258,7 +259,7 @@ if __name__ == '__main__':
     parser.add_argument('-mt', '--machine_type', type=int, default=-1)
     parser.add_argument('-bs', '--batch_size', type=int, default=32)
     parser.add_argument('-dur', '--input_duration', type=float, default=1)
-    parser.add_argument('-ac', '--accumulate_grad', type=int, default=8)
+    parser.add_argument('-ac', '--accumulate_grad', type=int, default=8)  # 累计n步的梯度，再调用opt.step()
     parser.add_argument('-ep', '--exp_path', type=str, default="exp")
     parser.add_argument('-sp', '--speed_perturb', type=int, default=0)
     parser.add_argument('-interval', '--obInterval', type=int, default=500)
@@ -270,9 +271,9 @@ if __name__ == '__main__':
     )
     parser.add_argument('--max_step', type=int, default=10000)
     parser.add_argument('--result_file', type=str)
-    parser.add_argument('--task', type=str, default='machine') # or 'condition'
+    parser.add_argument('--task', type=str, default='machine')  # or 'condition'
     args = parser.parse_args()
-    expkw = args.exp_path #'classify'
+    expkw = args.exp_path  # 'classify'
     machine_type = args.machine_type
     result_file = args.result_file
     if machine_type == -1:
@@ -284,7 +285,7 @@ if __name__ == '__main__':
     else:
         args.machine_type = INVERSE_CLASS_MAP[machine_type]
     logfile = f'logs/{expkw}_log_{args.machine_type}_*.log'
-    logfile = logfile.replace('*', str(len(glob.glob(logfile))+1))
+    logfile = logfile.replace('*', str(len(glob.glob(logfile)) + 1))
     os.makedirs(os.path.dirname(logfile), exist_ok=True)
     logging.basicConfig(
         filename=logfile,
@@ -294,7 +295,7 @@ if __name__ == '__main__':
     )
     # 准备数据部分
     sr = 16000
-    input_samples = int(sr * args.input_duration)
+    input_samples = int(sr * args.input_duration)  # 输入segment长度
     hop_size = None
     mcm = MCMDataSet1d23(
         data_root="/home/public/dcase/dcase23/updated/",
@@ -312,7 +313,7 @@ if __name__ == '__main__':
     n_classes = mcm.n_classes
     emb_size = 128
 
-    net = W2V(embedding_dim=emb_size, output_dim = n_classes, model_name=args.model_name)
+    net = W2V(embedding_dim=emb_size, output_dim=n_classes, model_name=args.model_name)
     net.cuda()
 
     args.netname = net.__class__.__name__

@@ -14,6 +14,7 @@ import glob
 from w2v import W2V
 import os
 
+
 def list_all(data_root, machines):
     file_lists = []
     for machine in machines:
@@ -23,18 +24,18 @@ def list_all(data_root, machines):
         file_lists.extend(file_lists_test)
     return file_lists
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-dataset', '--dataset', type=int, default=0, required=True, help="0:dev 1:eval 2:dev+eval")
+    parser.add_argument('-dataset', '--dataset', type=int, default=2, required=True, help="0:dev 1:eval 2:dev+eval")
     parser.add_argument('-ckpt', '--checkpoint', type=str, required=True)
-    parser.add_argument('-or', '--output_root', type=str, required=True)
-    parser.add_argument('-duration', '--input_duration', type=float, required=True)
-    parser.add_argument('-shift', '--input_shift', type=float, required=True)
+    parser.add_argument('-or', '--output_root', type=str, required=True, default='arks')
+    parser.add_argument('-duration', '--input_duration', type=float, required=True, default=2)
+    parser.add_argument('-shift', '--input_shift', type=float, required=True, default=0.5)
     parser.add_argument('-prefix', '--output_prefix', type=str, required=True)
     parser.add_argument('-model', '--model_name', type=str, default="wav2vec_300m")
 
     args = parser.parse_args()
-    
     os.system('mkdir -p {}'.format(args.output_root))
 
     # 准备数据部分
@@ -52,7 +53,7 @@ if __name__ == '__main__':
 
     emb_size = 128
 
-    net = W2V(embedding_dim=emb_size, output_dim = n_classes, model_name=args.model_name)
+    net = W2V(embedding_dim=emb_size, output_dim=n_classes, model_name=args.model_name)
     ckpt = args.checkpoint
     net.load_state_dict(torch.load(ckpt))
     net.cuda()
@@ -74,17 +75,17 @@ if __name__ == '__main__':
                                                           args.output_root, args.output_prefix)) as writer:
         for file_name in file_lists_all:
             machine_id = file_name.split("/")[7]
-            waveform, _ = torchaudio.load(file_name)
+            waveform, _ = torchaudio.load(file_name)  # 读入clip波形
             waveform_utt = []
-            segment_samples = input_samples
-            segment_samples_shift = input_shift
+            segment_samples = input_samples  # segment长度
+            segment_samples_shift = input_shift  # segment间跳跃点数
             end = segment_samples
             while end < waveform.shape[1]:
-                waveform_utt.append(waveform[:, end - segment_samples : end])
+                waveform_utt.append(waveform[:, end - segment_samples: end])
                 end += segment_samples_shift
-            waveform_utt.append(waveform[:, -segment_samples :]) 
-            waveform_utt = torch.cat(waveform_utt, dim=0).to("cuda:0")
+            waveform_utt.append(waveform[:, -segment_samples:])  # 把最后剩的放进来
+            waveform_utt = torch.cat(waveform_utt, dim=0).to("cuda:0")  # 同clip的不同segment作为batch送入
             with torch.no_grad():
                 output = net(waveform_utt)
                 embedding = output['embedding'].cpu()
-                writer(machine_id+"-"+file_name.split("/")[-1].replace(".wav", ""), embedding.numpy())
+                writer(machine_id + "-" + file_name.split("/")[-1].replace(".wav", ""), embedding.numpy())
